@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PerfectScrollbar from "react-perfect-scrollbar";
 import PropTypes from "prop-types";
 import { format } from "date-fns";
@@ -13,11 +13,14 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  TableSortLabel,
   Typography,
 } from "@mui/material";
 // import { getInitials } from "../../utils/get-initials";
 
-export const NFTListResults = ({ nfts, ...rest }) => {
+export const NFTListResults = ({ ...rest }) => {
+  const [nfts, setNfts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [selectedNftIds, setSelectedNftIds] = useState([]);
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(0);
@@ -62,6 +65,41 @@ export const NFTListResults = ({ nfts, ...rest }) => {
     setPage(newPage);
   };
 
+  useEffect(() => {
+    setLoading(true);
+    const options = { method: "GET", headers: { Accept: "application/json" } };
+    const blueChips = [
+      "boredapeyachtclub",
+      "fidenza-by-tyler-hobbs",
+      "mutant-ape-yacht-club",
+      "world-of-women-nft",
+      "rtfkt-creators",
+      "cool-cats-nft",
+      "doodles-official",
+      "meebits",
+      "jrny-club-official",
+      "supducks",
+      "the-wanderers",
+      "planet-pass",
+      "the-doge-pound",
+      "cyberkongz",
+      "veefriends",
+    ];
+    let collectionStats = [];
+
+    blueChips.forEach((collection) => {
+      fetch(`https://api.opensea.io/api/v1/collection/${collection}`, options)
+        .then((res) => res.json())
+        .then((data) => {
+          collectionStats.push(data.collection);
+          setNfts([...collectionStats]);
+          console.log(data.collection);
+          setLoading(false);
+        })
+        .catch((err) => console.error(err));
+    });
+  }, []);
+
   return (
     <Card {...rest}>
       <PerfectScrollbar>
@@ -77,7 +115,15 @@ export const NFTListResults = ({ nfts, ...rest }) => {
                     onChange={handleSelectAll}
                   />
                 </TableCell>
-                <TableCell>Project</TableCell>
+                <TableCell>
+                  {/* <TableSortLabel
+                    active={orderBy === headCell.id}
+                    direction={orderBy === headCell.id ? order : "asc"}
+                    onClick={createSortHandler(headCell.id)}
+                  > */}
+                  Project
+                  {/* </TableSortLabel> */}
+                </TableCell>
                 <TableCell>Supply</TableCell>
                 <TableCell>OS Floor</TableCell>
                 <TableCell>Avg. Price</TableCell>
@@ -86,12 +132,12 @@ export const NFTListResults = ({ nfts, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {nfts.slice(0, limit).map((nft) => (
-                <TableRow hover key={nft.id} selected={selectedNftIds.indexOf(nft.id) !== -1}>
+              {nfts.map((nft) => (
+                <TableRow hover key={nft.name} selected={selectedNftIds.indexOf(nft) !== -1}>
                   <TableCell padding="checkbox">
                     <Checkbox
-                      checked={selectedNftIds.indexOf(nft.id) !== -1}
-                      onChange={(event) => handleSelectOne(event, nft.id)}
+                      checked={selectedNftIds.indexOf(nft) !== -1}
+                      onChange={(event) => handleSelectOne(event, nft)}
                       value="true"
                     />
                   </TableCell>
@@ -110,11 +156,11 @@ export const NFTListResults = ({ nfts, ...rest }) => {
                       </Typography>
                     </Box>
                   </TableCell>
-                  <TableCell>{nft.supply}</TableCell>
-                  <TableCell>{nft.osFloor}</TableCell>
-                  <TableCell>{nft.avgPrice}</TableCell>
-                  <TableCell>{nft.numSales}</TableCell>
-                  <TableCell>{nft.volume}</TableCell>
+                  <TableCell>{nft.stats.count}</TableCell>
+                  <TableCell>{nft.stats.floor_price}</TableCell>
+                  <TableCell>{nft.stats.one_day_average_price}</TableCell>
+                  <TableCell>{nft.stats.one_day_sales}</TableCell>
+                  <TableCell>{nft.stats.one_day_volume}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -134,6 +180,6 @@ export const NFTListResults = ({ nfts, ...rest }) => {
   );
 };
 
-NFTListResults.propTypes = {
-  nfts: PropTypes.array.isRequired,
-};
+// NFTListResults.propTypes = {
+//   nfts: PropTypes.array.isRequired,
+// };
