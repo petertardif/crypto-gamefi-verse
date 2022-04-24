@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { alpha } from "@mui/material/styles";
-import Box from "@mui/material/Box";
+import { Avatar, Box, Button, ButtonGroup } from "@mui/material";
+import { UserCircle as UserCircleIcon } from "../../icons/user-circle";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -21,33 +22,6 @@ import Switch from "@mui/material/Switch";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { visuallyHidden } from "@mui/utils";
-
-function createData(project_name, supply, floor, avg_price, sales, volume) {
-  return {
-    project_name,
-    supply,
-    floor,
-    avg_price,
-    sales,
-    volume,
-  };
-}
-
-const rows = [
-  createData("Cupcake", 305, 3.7, 67, 4.3, 1000),
-  createData("Donut", 452, 25.0, 51, 4.9, 2000),
-  createData("Eclair", 262, 16.0, 24, 6.0, 400),
-  createData("Frozen yoghurt", 159, 6.0, 24, 4.0, 654),
-  createData("Gingerbread", 356, 16.0, 49, 3.9, 555),
-  createData("Honeycomb", 408, 3.2, 87, 6.5, 5000),
-  createData("Ice cream sandwich", 237, 9.0, 37, 4.3, 3400),
-  createData("Jelly Bean", 375, 0.0, 94, 0.0, 5000),
-  createData("KitKat", 518, 26.0, 65, 7.0, 234),
-  createData("Lollipop", 392, 0.2, 98, 0.0, 309),
-  createData("Marshmallow", 318, 0, 81, 2.0, 10000),
-  createData("Nougat", 360, 19.0, 9, 37.0, 3064567),
-  createData("Oreo", 437, 18.0, 63, 4.0, 45678),
-];
 
 function descendingComparator(a, b, orderBy) {
   if (b[orderBy] < a[orderBy]) {
@@ -87,16 +61,22 @@ const headCells = [
     label: "Project",
   },
   {
+    id: "market_cap",
+    numeric: true,
+    disablePadding: false,
+    label: "Market Cap",
+  },
+  {
     id: "supply",
     numeric: true,
     disablePadding: false,
-    label: "Supply",
+    label: "Owners / Supply Percent",
   },
   {
     id: "floor",
     numeric: true,
     disablePadding: false,
-    label: "OS Floor",
+    label: "Floor",
   },
   {
     id: "avg_price",
@@ -174,7 +154,7 @@ EnhancedTableHead.propTypes = {
 };
 
 const EnhancedTableToolbar = (props) => {
-  const { numSelected } = props;
+  const { numSelected, handleChangeDateRange } = props;
 
   return (
     <Toolbar
@@ -197,6 +177,23 @@ const EnhancedTableToolbar = (props) => {
         </Typography>
       )}
 
+      {numSelected > 0 ? (
+        <></>
+      ) : (
+        <>
+          <ButtonGroup size="small" aria-label="small button group">
+            <Button key="one_day" value="one_day" onClick={handleChangeDateRange}>
+              24H
+            </Button>
+            <Button key="seven_day" value="seven_day" onClick={handleChangeDateRange}>
+              7D
+            </Button>
+            <Button key="thirty_day" value="thirty_day" onClick={handleChangeDateRange}>
+              30D
+            </Button>
+          </ButtonGroup>
+        </>
+      )}
       {numSelected > 0 ? (
         <Tooltip title="Delete">
           <IconButton>
@@ -223,6 +220,7 @@ export default function NftBlueChipList() {
   const [orderBy, setOrderBy] = useState("volume");
   const [selected, setSelected] = useState([]);
   const [nfts, setNfts] = useState([]);
+  const [salesDateRange, setSalesDateRange] = useState("one_day");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [dense, setDense] = useState(false);
@@ -276,6 +274,13 @@ export default function NftBlueChipList() {
     setDense(event.target.checked);
   };
 
+  const handleChangeDateRange = (event) => {
+    let newDateRange = event.target.value;
+    setSalesDateRange(newDateRange);
+  };
+
+  const nestedTernary = (condition, then, otherwise) => (condition ? then : otherwise);
+
   const isSelected = (name) => selected.indexOf(name) !== -1;
 
   // Avoid a layout jump when reaching the last page with empty rows.
@@ -319,7 +324,10 @@ export default function NftBlueChipList() {
   return (
     <Box sx={{ width: "100%" }}>
       <Paper sx={{ width: "100%", mb: 2 }}>
-        <EnhancedTableToolbar numSelected={selected.length} />
+        <EnhancedTableToolbar
+          numSelected={selected.length}
+          handleChangeDateRange={handleChangeDateRange}
+        />
         <TableContainer>
           <Table
             sx={{ minWidth: 750 }}
@@ -363,13 +371,55 @@ export default function NftBlueChipList() {
                         />
                       </TableCell>
                       <TableCell component="th" id={labelId} scope="row" padding="none">
+                        <Avatar
+                          sx={{
+                            height: 30,
+                            width: 30,
+                            ml: 1,
+                            margin: 0,
+                          }}
+                          src={row.image_url}
+                        >
+                          <UserCircleIcon fontSize="small" />
+                        </Avatar>
                         {row.name}
                       </TableCell>
-                      <TableCell align="right">{row.stats.count}</TableCell>
-                      <TableCell align="right">{row.stats.floor_price}</TableCell>
-                      <TableCell align="right">{row.stats.one_day_average_price}</TableCell>
-                      <TableCell align="right">{row.stats.one_day_sales}</TableCell>
-                      <TableCell align="right">{row.stats.one_day_volume}</TableCell>
+                      <TableCell align="right">
+                        ${new Intl.NumberFormat().format(row.stats.market_cap.toFixed(0))}
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.stats.num_owners} / {row.stats.total_supply}
+                        <br />
+                        <>{((row.stats.num_owners / row.stats.total_supply) * 100).toFixed(0)}%</>
+                      </TableCell>
+                      <TableCell align="right">{row.stats.floor_price.toFixed(2)}</TableCell>
+                      <TableCell align="right">
+                        {salesDateRange === "one_day"
+                          ? row.stats.one_day_average_price.toFixed(2)
+                          : nestedTernary(
+                              salesDateRange === "seven_day",
+                              row.stats.seven_day_average_price.toFixed(2),
+                              row.stats.thirty_day_average_price.toFixed(2)
+                            )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {salesDateRange === "one_day"
+                          ? row.stats.one_day_sales
+                          : nestedTernary(
+                              salesDateRange === "seven_day",
+                              row.stats.seven_day_sales,
+                              row.stats.thirty_day_sales
+                            )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {salesDateRange === "one_day"
+                          ? row.stats.one_day_volume.toFixed(2)
+                          : nestedTernary(
+                              salesDateRange === "seven_day",
+                              row.stats.seven_day_volume.toFixed(2),
+                              row.stats.thirty_day_volume.toFixed(2)
+                            )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
