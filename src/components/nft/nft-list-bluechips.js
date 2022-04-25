@@ -55,7 +55,13 @@ function stableSort(array, comparator) {
 
 const headCells = [
   {
-    id: "project_name",
+    id: "name",
+    numeric: false,
+    disablePadding: true,
+    label: "",
+  },
+  {
+    id: "name",
     numeric: false,
     disablePadding: true,
     label: "Project",
@@ -154,7 +160,8 @@ EnhancedTableHead.propTypes = {
 };
 
 const EnhancedTableToolbar = (props) => {
-  const { numSelected, handleChangeDateRange } = props;
+  const { numSelected, handleChangeDateRange, salesDateRange } = props;
+  const highlightColor = "#f0f6ff";
 
   return (
     <Toolbar
@@ -182,13 +189,28 @@ const EnhancedTableToolbar = (props) => {
       ) : (
         <>
           <ButtonGroup size="small" aria-label="small button group">
-            <Button key="one_day" value="one_day" onClick={handleChangeDateRange}>
+            <Button
+              key="one_day"
+              value="one_day"
+              onClick={handleChangeDateRange}
+              sx={{ backgroundColor: salesDateRange === "one_day" ? highlightColor : "white" }}
+            >
               24H
             </Button>
-            <Button key="seven_day" value="seven_day" onClick={handleChangeDateRange}>
+            <Button
+              key="seven_day"
+              value="seven_day"
+              onClick={handleChangeDateRange}
+              sx={{ backgroundColor: salesDateRange === "seven_day" ? highlightColor : "white" }}
+            >
               7D
             </Button>
-            <Button key="thirty_day" value="thirty_day" onClick={handleChangeDateRange}>
+            <Button
+              key="thirty_day"
+              value="thirty_day"
+              onClick={handleChangeDateRange}
+              sx={{ backgroundColor: salesDateRange === "thirty_day" ? highlightColor : "white" }}
+            >
               30D
             </Button>
           </ButtonGroup>
@@ -327,6 +349,7 @@ export default function NftBlueChipList() {
         <EnhancedTableToolbar
           numSelected={selected.length}
           handleChangeDateRange={handleChangeDateRange}
+          salesDateRange={salesDateRange}
         />
         <TableContainer>
           <Table
@@ -345,7 +368,7 @@ export default function NftBlueChipList() {
             <TableBody>
               {/* if you don't need to support IE11, you can replace the `stableSort` call with:
                  nfts.slice().sort(getComparator(order, orderBy)) */}
-              {nfts
+              {stableSort(nfts, getComparator(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
                   const isItemSelected = isSelected(row.name);
@@ -370,7 +393,7 @@ export default function NftBlueChipList() {
                           }}
                         />
                       </TableCell>
-                      <TableCell component="th" id={labelId} scope="row" padding="none">
+                      <TableCell align="left">
                         <Avatar
                           sx={{
                             height: 30,
@@ -382,6 +405,8 @@ export default function NftBlueChipList() {
                         >
                           <UserCircleIcon fontSize="small" />
                         </Avatar>
+                      </TableCell>
+                      <TableCell component="th" id={labelId} scope="row" padding="none">
                         {row.name}
                       </TableCell>
                       <TableCell align="right">
