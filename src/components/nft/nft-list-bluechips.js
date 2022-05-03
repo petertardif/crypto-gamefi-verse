@@ -55,7 +55,7 @@ function stableSort(array, comparator) {
 
 const headCells = [
   {
-    id: "name",
+    id: "",
     numeric: false,
     disablePadding: true,
     label: "",
@@ -73,28 +73,34 @@ const headCells = [
     label: "Market Cap",
   },
   {
-    id: "supply",
+    id: "num_owners",
     numeric: true,
     disablePadding: false,
     label: "Owners / Supply Percent",
   },
   {
-    id: "floor",
+    id: "floor_price",
     numeric: true,
     disablePadding: false,
     label: "Floor",
   },
   {
-    id: "avg_price",
-    numeric: true,
-    disablePadding: false,
-    label: "Avg. Price",
-  },
-  {
     id: "sales",
     numeric: true,
     disablePadding: false,
-    label: "# Sales",
+    label: "Sales",
+  },
+  {
+    id: "change",
+    numeric: true,
+    disablePadding: false,
+    label: "Change",
+  },
+  {
+    id: "average_price",
+    numeric: true,
+    disablePadding: false,
+    label: "Avg. Price",
   },
   {
     id: "volume",
@@ -105,9 +111,19 @@ const headCells = [
 ];
 
 function EnhancedTableHead(props) {
-  const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort } = props;
+  const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort, salesDateRange } =
+    props;
   const createSortHandler = (property) => (event) => {
     onRequestSort(event, property);
+  };
+  const transformSalesDateRangeText = (salesDateRange) => {
+    if (salesDateRange == "one_day") {
+      return "24H ";
+    } else if (salesDateRange == "seven_day") {
+      return "7D ";
+    } else {
+      return "30D ";
+    }
   };
 
   return (
@@ -136,6 +152,9 @@ function EnhancedTableHead(props) {
               direction={orderBy === headCell.id ? order : "asc"}
               onClick={createSortHandler(headCell.id)}
             >
+              {["Sales", "Change", "Avg. Price", "Volume"].includes(headCell.label)
+                ? transformSalesDateRangeText(salesDateRange)
+                : ""}
               {headCell.label}
               {orderBy === headCell.id ? (
                 <Box component="span" sx={visuallyHidden}>
@@ -238,8 +257,8 @@ EnhancedTableToolbar.propTypes = {
 };
 
 export default function NftBlueChipList() {
-  const [order, setOrder] = useState("asc");
-  const [orderBy, setOrderBy] = useState("volume");
+  const [order, setOrder] = useState("desc");
+  const [orderBy, setOrderBy] = useState("market_cap");
   const [selected, setSelected] = useState([]);
   const [nfts, setNfts] = useState([]);
   const [salesDateRange, setSalesDateRange] = useState("one_day");
@@ -299,6 +318,37 @@ export default function NftBlueChipList() {
   const handleChangeDateRange = (event) => {
     let newDateRange = event.target.value;
     setSalesDateRange(newDateRange);
+    updateDateRangeInStateForTableSort(newDateRange);
+  };
+
+  const updateDateRangeInStateForTableSort = (newDateRange) => {
+    let updatedCollectionsWithDateRange = [];
+    nfts.map((nft) => {
+      let updatedNft = { ...nft };
+      console.log(nfts);
+      switch (newDateRange) {
+        case "one_day":
+          updatedNft.average_price = nft.one_day_average_price;
+          updatedNft.change = nft.one_day_change;
+          updatedNft.sales = nft.one_day_sales;
+          updatedNft.volume = nft.one_day_volume;
+          break;
+        case "seven_day":
+          updatedNft.average_price = nft.seven_day_average_price;
+          updatedNft.change = nft.seven_day_change;
+          updatedNft.sales = nft.seven_day_sales;
+          updatedNft.volume = nft.seven_day_volume;
+          break;
+        default:
+          updatedNft.average_price = nft.thirty_day_average_price;
+          updatedNft.change = nft.thirty_day_change;
+          updatedNft.sales = nft.thirty_day_sales;
+          updatedNft.volume = nft.thirty_day_volume;
+      }
+
+      updatedCollectionsWithDateRange.push(updatedNft);
+    });
+    setNfts(updatedCollectionsWithDateRange);
   };
 
   const nestedTernary = (condition, then, otherwise) => (condition ? then : otherwise);
@@ -328,15 +378,47 @@ export default function NftBlueChipList() {
       "cyberkongz",
       "veefriends",
     ];
+    let statsToAddToCollection = [
+      "market_cap",
+      "count",
+      "floor_price",
+      "num_owners",
+      "one_day_average_price",
+      "one_day_change",
+      "one_day_sales",
+      "one_day_volume",
+      "seven_day_average_price",
+      "seven_day_change",
+      "seven_day_sales",
+      "seven_day_volume",
+      "thirty_day_average_price",
+      "thirty_day_change",
+      "thirty_day_sales",
+      "thirty_day_volume",
+      "total_sales",
+      "total_supply",
+      "total_volume",
+    ];
     let collectionStats = [];
 
     blueChips.forEach((collection) => {
       fetch(`https://api.opensea.io/api/v1/collection/${collection}`, options)
         .then((res) => res.json())
         .then((data) => {
+          // remove one, seven, thirty day stats from stats object so table can sort data
+          statsToAddToCollection.map((stat) => {
+            data.collection[stat] = data.collection.stats[stat];
+          });
+          // initially set 4 fields for dynamic filters in table (average_price, change, sales, volume)
+          data.collection["average_price"] = data.collection.stats.one_day_average_price;
+          data.collection["change"] = data.collection.stats.one_day_change;
+          data.collection["sales"] = data.collection.stats.one_day_sales;
+          data.collection["volume"] = data.collection.stats.one_day_volume;
+          // push mutated API call into state
           collectionStats.push(data.collection);
+
+          // set state
           setNfts([...collectionStats]);
-          console.log(data.collection);
           setLoading(false);
         })
         .catch((err) => console.error(err));
@@ -364,6 +446,7 @@ export default function NftBlueChipList() {
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
               rowCount={nfts.length}
+              salesDateRange={salesDateRange}
             />
             <TableBody>
               {/* if you don't need to support IE11, you can replace the `stableSort` call with:
@@ -410,41 +493,18 @@ export default function NftBlueChipList() {
                         {row.name}
                       </TableCell>
                       <TableCell align="right">
-                        ${new Intl.NumberFormat().format(row.stats.market_cap.toFixed(0))}
+                        ${new Intl.NumberFormat().format(row.market_cap.toFixed(0))}
                       </TableCell>
                       <TableCell align="right">
-                        {row.stats.num_owners} / {row.stats.total_supply}
+                        {row.num_owners} / {row.total_supply}
                         <br />
-                        <>{((row.stats.num_owners / row.stats.total_supply) * 100).toFixed(0)}%</>
+                        <>{((row.num_owners / row.total_supply) * 100).toFixed(0)}%</>
                       </TableCell>
-                      <TableCell align="right">{row.stats.floor_price.toFixed(2)}</TableCell>
-                      <TableCell align="right">
-                        {salesDateRange === "one_day"
-                          ? row.stats.one_day_average_price.toFixed(2)
-                          : nestedTernary(
-                              salesDateRange === "seven_day",
-                              row.stats.seven_day_average_price.toFixed(2),
-                              row.stats.thirty_day_average_price.toFixed(2)
-                            )}
-                      </TableCell>
-                      <TableCell align="right">
-                        {salesDateRange === "one_day"
-                          ? row.stats.one_day_sales
-                          : nestedTernary(
-                              salesDateRange === "seven_day",
-                              row.stats.seven_day_sales,
-                              row.stats.thirty_day_sales
-                            )}
-                      </TableCell>
-                      <TableCell align="right">
-                        {salesDateRange === "one_day"
-                          ? row.stats.one_day_volume.toFixed(2)
-                          : nestedTernary(
-                              salesDateRange === "seven_day",
-                              row.stats.seven_day_volume.toFixed(2),
-                              row.stats.thirty_day_volume.toFixed(2)
-                            )}
-                      </TableCell>
+                      <TableCell align="right">{row.floor_price.toFixed(2)}</TableCell>
+                      <TableCell align="right">{row.sales.toFixed(2)}</TableCell>
+                      <TableCell align="right">{row.change.toFixed(2)}</TableCell>
+                      <TableCell align="right">{row.average_price.toFixed(2)}</TableCell>
+                      <TableCell align="right">{row.volume.toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}
